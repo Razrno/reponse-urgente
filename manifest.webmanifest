@@ -1,0 +1,36 @@
+{
+ "name": "112 Réponse Urgente — Simulateur CSO",
+ "short_name": "112 Urgence",
+ "description": "Simulateur d'opérateur au CSO de Champerret (BSPP) : appels d'urgence, engagement des secours, multijoueur.",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "landscape",
+ "background_color": "#12080a",
+ "theme_color": "#1c1f3b",
+ "lang": "fr",
+ "categories": [
+  "games",
+  "simulation"
+ ],
+ "icons": [
+  {
+   "src": "icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-512-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
