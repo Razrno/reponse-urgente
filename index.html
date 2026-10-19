@@ -138,6 +138,9 @@ footer div b{color:var(--txt)}
 .leaflet-tooltip{font-weight:600}
 @media(max-width:1100px){main{grid-template-columns:1fr;overflow:auto}#center{min-height:340px}section{overflow:visible}html,body{overflow:auto}}
 </style>
+<style>#baro{border:1px solid #3a3f6b;border-radius:10px;padding:6px 8px;margin-bottom:8px;font-size:12px;display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.04)}#n1{border:1px solid #1b8fe6;border-radius:10px;padding:8px;margin:6px 0;background:rgba(27,143,230,.09)}#n1 .row button.on{outline:2px solid #fff}#levList button{font-size:12px;padding:5px 8px}</style>
+<style>#tuto{position:fixed;left:50%;bottom:160px;transform:translateX(-50%);z-index:4500;width:min(540px,92vw);background:#1c1f3b;color:#e8ecf4;border:2px solid #ffd400;border-radius:14px;padding:12px 14px;box-shadow:0 10px 40px rgba(0,0,0,.55);font:14px/1.45 system-ui}#tuto .tuh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}#tuto .tuh b{font-size:16px;color:#ffd400}#tuto .tuh span{color:#aab1d4;font-size:12px}#tuto .tub{display:flex;gap:8px;margin-top:8px;justify-content:flex-end}.tutoHi{outline:3px solid #ffd400!important;box-shadow:0 0 0 6px rgba(255,212,0,.35)!important;animation:tpulse 1.1s ease-in-out infinite}@keyframes tpulse{50%{box-shadow:0 0 0 12px rgba(255,212,0,.1)}}</style>
+<style>.rolePanel{border:1px solid #ffd400;border-radius:10px;padding:8px;background:rgba(255,212,0,.08)}</style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1c1f3b">
 <meta name="mobile-web-app-capable" content="yes">
@@ -168,13 +171,17 @@ footer div b{color:var(--txt)}
   </div>
   <h3>Charge d'appels</h3>
   <div class="row" id="loads"><div class="opt" data-v="1.5"><b>Calme</b></div><div class="opt sel" data-v="1"><b>Normale</b></div><div class="opt" data-v="0.6"><b>Intense</b></div></div>
+  <h3>Poste à la PFAU</h3>
+  <div class="row" id="postesP"><div class="opt sel" data-v="chain"><b>NIV 1 + NIV 2</b><small>Réception puis traitement : qualifiez TU / EVT / U / MURG, transférez, instruisez</small></div><div class="opt" data-v="sta"><b>NIV 2 · STA seul</b><small>Appels déjà orientés, vous instruisez et engagez</small></div></div>
   <h3>Heure de début</h3>
   <div class="row"><select id="startHour"><option value="2">02:00 — nuit</option><option value="8" selected>08:00 — matin</option><option value="14">14:00 — après-midi</option><option value="20">20:00 — soirée</option></select></div>
-  <div class="row"><button id="bMulti" style="flex:1;padding:12px">👥 Multijoueur</button></div>
+  <div class="row"><button id="bTuto" style="flex:1;padding:12px">📖 Tutoriel guidé</button><button id="bMulti" style="flex:1;padding:12px">👥 Multijoueur</button></div>
   <div class="row"><button id="goMute" class="hidden" style="flex:1;padding:12px">Jouer sans voix</button><button class="primary" id="go" style="flex:1;padding:12px">▶ Prendre la garde</button></div>
   <p class="sub" style="font-size:12px;margin:10px 0 0">Jeu fan-made, sans lien officiel avec la BSPP. Adresses fictives, positions approximatives. Carte et itinéraires nécessitent une connexion internet. Trajets accélérés ×6. Voix IA gratuites Piper (téléchargées au premier lancement). Pour le micro : Edge ou Chrome, avec un casque. Lancez le jeu avec lancer.bat.</p>
  </div>
 </div>
+
+<div id="tuto" class="hidden"><div class="tuh"><b id="tuT"></b><span id="tuN"></span></div><div id="tuX"></div><div class="tub"><button id="tuNext" class="primary">Suivant ›</button><button id="tuQuit">Quitter</button></div></div>
 
 <div id="app" class="hidden">
  <header>
@@ -186,17 +193,20 @@ footer div b{color:var(--txt)}
   <div class="stat">Score moyen <b id="hS">—</b></div>
   <div class="stat"><b id="hG"></b></div>
   <div class="sp"></div>
-  <span class="stat" id="vStat"></span><button id="bTest">🔔 Test son</button><button id="bSnd">🔊 Voix</button><button id="bTheme" title="Thème clair / sombre">🌓</button>
+  <span class="stat" id="vStat"></span><button id="bTest">🔔 Test son</button><button id="bSnd">🔊 Voix</button><button id="bMurf" title="Voix Murf (clé API facultative)">🎙 Murf</button><button id="bTheme" title="Thème clair / sombre">🌓</button>
   <button id="bEnd">Terminer la garde</button>
  </header>
  <main>
   <section id="left">
+   <div id="baro" class="hidden"></div>
+   <details id="levBox" class="hidden"><summary style="cursor:pointer;font-weight:700;font-size:13px">🎛 Leviers de la salle (SOGCO / chef de salle)</summary><div id="levList"></div></details>
    <h3>Lignes entrantes</h3>
    <div id="lines"></div>
    <div id="callbox" class="hidden">
     <div style="display:flex;justify-content:space-between;align-items:center"><b id="cName"></b><span id="cState" style="color:var(--mut)"></span></div>
     <div class="bar"><i id="cBar"></i></div>
     <div id="chat"></div>
+    <div id="n1" class="hidden"><div id="n1a"><div style="display:flex;justify-content:space-between;align-items:center"><b>📋 NIV 1 · Réception (SRA)</b><span id="n1t" style="font-weight:800"></span></div><div style="font-size:12px;color:var(--mut)">Qualifiez le domaine et le degré d’urgence en moins de 30 s, puis transférez.</div><div class="row" id="n1dom" style="margin:6px 0 0"></div><div class="row hidden" id="n1deg" style="margin:4px 0 0"></div><button id="n1go" class="primary" style="width:100%;margin-top:6px" disabled>Choisissez une qualification</button><div id="n1hint" style="font-size:12px;color:var(--mut);margin-top:2px"></div></div><div id="n1b" class="hidden"></div></div>
     <button id="greet" class="primary" style="width:100%">🗣 « Sapeurs-pompiers, j'écoute »</button>
     <div id="qb" style="display:flex;flex-direction:column;gap:4px"></div>
     <form id="tf" class="row" style="margin:0"><input id="txt" placeholder="Parlez à l'appelant… (ou utilisez les boutons)" autocomplete="off"><button class="primary">Envoyer</button><select id="micMode" title="Mode du micro" style="width:auto"><option value="ptt">Maintenir pour parler</option><option value="cont">Écoute continue</option></select><button type="button" id="mic" title="Parlez à voix haute ; l'appelant réagit et se tait si vous l'interrompez (casque conseillé)">🎤 Micro</button></form><div id="live" style="color:var(--blue);font-size:12px;min-height:16px"></div>
@@ -204,6 +214,9 @@ footer div b{color:var(--txt)}
     <div class="row" style="margin:0"><button id="hang" style="flex:1">📵 Raccrocher</button><button id="holdBtn" style="flex:1" title="Mettre l'appel en attente pour en prendre un autre">⏸ En attente</button><button id="mal" style="flex:1">🚫 Appel malveillant</button></div>
     <div class="row" style="margin:0"><button id="trace" style="flex:1">📍 Retracer l'appel</button><button id="polMal" class="hidden" style="flex:1">🚓 Envoyer la police</button></div>
     <div id="traceInfo" style="font-size:12px;color:var(--blue);font-weight:700;min-height:16px"></div>
+    <div id="xferBar" class="row hidden" style="margin:0;align-items:center"><span style="font-size:12px;color:var(--mut)">Transférer à :</span><button data-x="18">🚒 18</button><button data-x="112">☎ 112</button><button data-x="17">🚓 17</button><button data-x="15">🚑 15</button></div>
+    <div id="samuP" class="hidden rolePanel"><b>🚑 Poste 15 · Régulation médicale</b><div class="row" style="margin:4px 0 0"><button data-s="smur">🚑 Engager le SMUR</button><button data-s="pomp">🚒 Pompiers (18)</button><button data-s="amb">🏥 Ambulance privée</button><button data-s="med">🩺 Médecin / conseil</button></div></div>
+    <div id="polP" class="hidden rolePanel"><b>🚓 Poste 17 · Police-secours</b><div class="row" style="margin:4px 0 0"><button data-p="pat">🚓 Envoyer une patrouille</button><button data-p="ren">🚓🚓 Renfort (BAC)</button><button data-p="pomp">🚒 Besoin des pompiers</button><button data-p="end">✔ Conseils donnés, clore</button></div></div>
    </div>
    <div id="idle" style="color:var(--mut)">Aucun appel en cours. Décrochez dès qu'une ligne sonne.</div>
   </section>
@@ -667,7 +680,7 @@ function planCall(){
  const ad=sc.fix?ADDR.find(a=>a.street.includes(sc.fix)):genAddr(sc);
  const L_=LVL[G.lvl];let gap=srnd(L_.gap[0],L_.gap[1])*(G.loadMul||1);
  if(MP.on&&MP.mode==='coop')gap/=Math.sqrt(Math.max(1,MP.players.length));
- return {pers:pickPers(),sc:SC.indexOf(sc),ad:Math.max(0,ADDR.indexOf(ad)),adr:ad,name:spick(NAMES),jit:srnd(-10,10),gap,id:++G.planned};
+ return {dial:dialFor(sc),pers:pickPers(),sc:SC.indexOf(sc),ad:Math.max(0,ADDR.indexOf(ad)),adr:ad,name:spick(NAMES),jit:srnd(-10,10),gap,id:++G.planned};
 }
 function genPhone(id){
  const used=G.phones||(G.phones=new Set());let h=((G.seed0||1)^Math.imul(id+1,2654435761))>>>0;
@@ -907,6 +920,7 @@ function flagMal(){const c=G.active;if(!c)return;c.flag=true;endCall(c,'flag');}
 /* ============ engagement ============ */
 function engage(){
  const c=G.active;if(!c||c.ended)return toast("Aucun appel en cours.");
+ if(G.pfau&&c.n1&&!c.q1done)return toast("NIV 1 : qualifiez et transférez l’appel au NIV 2 (STA) avant d’engager les secours.");
  const comName=$('#fCom').value.trim(),com=COMMUNES.find(x=>norm(x.n)===norm(comName));
  if(!com)return toast("Renseignez une commune / un arrondissement valide dans la fiche d'appel.");
  c.fiche={commune:com.n,street:$('#fStr').value,nat:NATURES[$('#fNat').selectedIndex]||''};
@@ -1022,7 +1036,7 @@ function tick(){
   else{const d=planCall();createCall(d);if(MP.on&&MP.mode==='coop')mpSend({t:'call',d});G.next=d.gap;}
  }}
  // attente
- G.calls=G.calls.filter(c=>{c.wait+=dt;if(c.wait>L_.pat){if(MP.on&&MP.mode==='coop'){if(MP.host){MP.teamMissed++;mpBoardPush();log('❌ Ligne '+c.n+' manquée par l’équipe.');}return false;}G.missed++;mpMissed(c);return false;}return true;});
+ G.calls=G.calls.filter(c=>{c.wait+=dt;if(c.wait>L_.pat*(G.patMul||1)){if(MP.on&&MP.mode==='coop'){if(MP.host){MP.teamMissed++;mpBoardPush();log('❌ Ligne '+c.n+' manquée par l’équipe.');}return false;}G.missed++;mpMissed(c);return false;}return true;});
  // appel actif
  const a=G.active;
  if(a&&!a.ended){
@@ -1054,7 +1068,7 @@ function slowUi(){
  $('#hG').innerHTML=gradeSvg(gradeOf(save.xp),24)+' '+GRADES[gradeOf(save.xp)][0];
  // lignes
  const ln=$('#lines');ln.innerHTML='';
- G.calls.forEach(c=>{const d=document.createElement('div');d.className='line ring'+(inSector(c)?'':' dim');d.innerHTML=`<span>📞 Ligne ${c.n} <span class="tag" style="background:#c9cdea">${deptOf(c.addr.commune)}</span> <small style="color:var(--mut)">(${Math.round(LVL[G.lvl].pat-c.wait)}s)</small></span>`;const b=document.createElement('button');b.textContent=G.active?'⏸ + Décrocher':'Décrocher';b.className='primary';b.onclick=()=>answer(c);d.appendChild(b);ln.appendChild(d);});
+ G.calls.forEach(c=>{const d=document.createElement('div');d.className='line ring'+(inSector(c)?'':' dim');d.innerHTML=`<span>📞 Ligne ${c.n} <span class="tag" style="background:#c9cdea">${deptOf(c.addr.commune)}</span> <small style="color:var(--mut)">(${Math.round(LVL[G.lvl].pat*(G.patMul||1)-c.wait)}s)</small></span>`;const b=document.createElement('button');b.textContent=G.active?'⏸ + Décrocher':'Décrocher';b.className='primary';b.onclick=()=>answer(c);d.appendChild(b);ln.appendChild(d);});
  G.held.forEach(h=>{const d=document.createElement('div');d.className='line';d.style.borderColor='#8a4fd1';d.innerHTML='<span>⏸ Ligne '+h.n+' <small style="color:var(--mut)">(en attente '+Math.round(h.heldFor||0)+' s)</small></span>';const b=document.createElement('button');b.textContent='Reprendre';b.className='primary';b.onclick=()=>resumeCall(h);d.appendChild(b);ln.appendChild(d);});
  if(!G.calls.length&&!G.held.length)ln.innerHTML='<div style="color:var(--mut)">—</div>';
  ringCtl();
@@ -1166,7 +1180,38 @@ let piperP=null;
 function piperPreload(){if(piperP)return piperP;piperP=piperPreloadRun();return piperP;}
 async function piperPreloadRun(){piperStarted=true;setVoiceStatus('chargement des voix IA…');try{const m=await piperLoad();await m.predict({text:'Allô',voiceId:'fr_FR-siwis-medium'});await m.predict({text:'Allô',voiceId:'fr_FR-tom-medium'});piperReady=true;setVoiceStatus('voix IA Piper active');}catch(e){console.warn(e);piperStarted=false;piperP=null;setVoiceStatus('voix IA indisponible');}}
 function setVoiceStatus(t){const e=$('#vStat');if(e)e.textContent='🔊 '+t;}
-function say(t,c){if(soundOn&&piperReady)piperSay(t,c);}
+
+/* --- voix Murf (facultatif : clé API saisie par le joueur, jamais écrite dans le code) --- */
+let murfKey='',murfDown=false;try{murfKey=localStorage.getItem('bspp18murf')||'';}catch(e){}
+const murfCache=new Map(),MURF_F=['fr-FR-justine','fr-FR-adélie','fr-FR-louise'],MURF_M=['fr-FR-maxime','fr-FR-axel','fr-FR-guillaume','fr-FR-louis'];
+const murfOn=()=>!!murfKey&&!murfDown;
+function murfVoice(c){const L=c.sc.v==='f'?MURF_F:MURF_M;let s=0;const k=String(c.id||c.name||c.n||'');for(let i=0;i<k.length;i++)s=(s*31+k.charCodeAt(i))>>>0;return L[s%L.length];}
+function murfLabel(){const b=$('#bMurf');if(b)b.textContent=murfOn()?'🎙 Murf ✓':'🎙 Murf';}
+async function murfFetch(clean,c){
+ const voiceId=murfVoice(c),rate=Math.round(clamp((c.stress-40)/4,-8,18)),ck=voiceId+'|'+rate+'|'+clean;
+ if(murfCache.has(ck))return murfCache.get(ck);
+ const body={text:clean,voiceId,format:'MP3',modelVersion:'GEN2',encodeAsBase64:true,rate};
+ if(voiceId==='fr-FR-justine'&&c.stress>70)body.style='Sad';
+ const r=await Promise.race([fetch('https://api.murf.ai/v1/speech/generate',{method:'POST',headers:{'api-key':murfKey,'Content-Type':'application/json'},body:JSON.stringify(body)}),new Promise((_,j)=>setTimeout(()=>j(new Error('lent')),12000))]);
+ if(r.status===401||r.status===402||r.status===403){murfDown=true;murfLabel();throw new Error('clé Murf refusée ou crédits épuisés');}
+ if(!r.ok)throw new Error('Murf '+r.status);
+ const j=await r.json();let url;
+ if(j.encodedAudio){const bin=atob(j.encodedAudio),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);url=URL.createObjectURL(new Blob([u],{type:'audio/mpeg'}));}
+ else if(j.audioFile)url=j.audioFile;else throw new Error('réponse vide');
+ murfCache.set(ck,url);return url;
+}
+async function murfSay(t,c){
+ stopSpeak();const tok=spkTok;const clean=t.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();if(!clean)return;
+ lastSpoken=norm(clean);speaking=true;
+ try{
+  const url=await murfFetch(clean,c);if(tok!==spkTok)return;
+  const a=new Audio(url);curAudio=a;a.onended=()=>{speaking=false;lastSpokeAt=Date.now();};a.onerror=()=>{speaking=false;};
+  await a.play();
+ }catch(e){speaking=false;console.warn(e);if(tok===spkTok&&piperReady){toast('Murf indisponible ('+(e.message||e)+') : voix Piper.');piperSay(t,c);}}
+}
+$('#bMurf').onclick=()=>{const k=prompt('Clé API Murf (https://murf.ai/api/dashboard). Elle reste uniquement dans ce navigateur. Laissez vide pour désactiver Murf et revenir aux voix Piper gratuites.',murfKey);if(k===null)return;murfKey=k.trim();murfDown=false;try{murfKey?localStorage.setItem('bspp18murf',murfKey):localStorage.removeItem('bspp18murf');}catch(e){}murfLabel();toast(murfKey?'Voix Murf activées (retour automatique sur Piper en cas de problème).':'Voix Piper gratuites.');};
+murfLabel();
+function say(t,c){if(!soundOn)return;if(murfOn())murfSay(t,c);else if(piperReady)piperSay(t,c);}
 /* --- micro continu : l'appelant réagit à ce que vous dites, et se tait si vous l'interrompez --- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,micOn=false,micMode='ptt',micHeld=false,restarts=[];
 try{micMode=localStorage.getItem('bspp18mic')||'ptt';}catch(e){}
@@ -1217,7 +1262,7 @@ function mpSend(m){
 function mpOthers(m,from){MP.conns.forEach(c=>{if(c!==from&&c.open)try{c.send(m);}catch(e){}});}
 function mpPlayersUi(){
  const el=$('#lbPlayers');if(!el)return;
- el.innerHTML=MP.players.map((p,i)=>'<div class="line"><span>'+(i===0?'👑 ':'🧑‍🚒 ')+esc(p)+'</span><small style="color:var(--mut)">'+(i===0?'hôte':'joueur')+' · '+posteLabel((MP.postes||{})[p]||'all')+'</small></div>').join('');
+ el.innerHTML=MP.players.map((p,i)=>'<div class="line"><span>'+(i===0?'👑 ':'🧑‍🚒 ')+esc(p)+'</span><small style="color:var(--mut)">'+(i===0?'hôte':'joueur')+' · '+posteLabel((MP.postes||{})[p]||'18')+'</small></div>').join('');
  $('#lbStart').classList.toggle('hidden',!MP.host);
  $('#lbWait').classList.toggle('hidden',MP.host);
 }
@@ -1322,7 +1367,7 @@ function mpRecv(m,from){
   else while(MP.players.includes(n))n=(m.name||'Opérateur').slice(0,13)+' '+k++;
   if(G&&G.over){from.send({t:'full'});return;}
   from.pname=n;MP.conns.push(from);if(!MP.players.includes(n))MP.players.push(n);
-  MP.postes[n]='all';from.send({t:'welcome',you:n,mode:MP.mode,p:MP.players,po:MP.postes,st:!!MP.started});mpSend(playersMsg());mpPlayersUi();
+  MP.postes[n]='18';from.send({t:'welcome',you:n,mode:MP.mode,p:MP.players,po:MP.postes,st:!!MP.started});mpSend(playersMsg());mpPlayersUi();
   if(MP.started&&G){{const sn=mpSnap();sn.re=!!m.re;from.send(sn);}log('🧑‍🚒 '+esc(n)+(m.re?' s’est reconnecté.':' a rejoint la partie.'));toast(n+(m.re?' s’est reconnecté':' a rejoint la partie'));mpBoardPush();}
   break;}
  case 'full':lbStatus('La garde est terminée : impossible de rejoindre.');mpReset();break;
@@ -2137,7 +2182,7 @@ const deptOf=n=>/^Paris/.test(n)?'75':(DEPT_MAP[n]||'92');
 const POSTES=[['all','Tous secteurs'],['75','Paris (75)'],['92','Hauts-de-Seine (92)'],['93','Seine-Saint-Denis (93)'],['94','Val-de-Marne (94)']];
 const posteLabel=v=>(POSTES.find(p=>p[0]===v)||POSTES[0])[1];
 MP.postes={};MP.myPoste='all';
-const inSector=c=>!MP.on||MP.myPoste==='all'||deptOf(c.addr.commune)===MP.myPoste;
+let inSector=c=>!MP.on||MP.myPoste==='all'||deptOf(c.addr.commune)===MP.myPoste;
 function playersMsg(){return {t:'players',p:MP.players,po:MP.postes};}
 function simClock(){const m=Math.floor((G&&G.hour0!=null?G.hour0:8)*60+(G?G.t:0)*6)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 /* --- trafic radio (statuts des engins) --- */
@@ -2204,6 +2249,562 @@ document.querySelectorAll('#loads .opt').forEach(o=>o.onclick=()=>{document.quer
 $('#startHour').onchange=()=>{startHour=+$('#startHour').value;};
 setInterval(mpPosTick,500);setInterval(mpExpire,1000);
 function mpMissed(c){c.res={total:0,notes:['Appel manqué']};c.final=true;c.missed=true;G.results.push(c);mpResult(c);log('❌ Appel ligne '+c.n+' manqué : l’appelant a raccroché.');beep(300,.4,.1,'sawtooth');}
+/* ===== PFAU : plateforme des appels d’urgence 17-18-112 (BSP 115.1) =====
+   NIV 0 disque sonore · NIV 1 SRA (réception, orientation, qualification TU/EVT/U/MURG) · NIV 2 STA (instruction, engagement)
+   Baromètres, file prioritaire TU-EVT-U-MURG, événements (appels multiples), vagues « moins urgent », leviers de la salle. */
+let postePfau='chain';
+document.querySelectorAll('#postesP .opt').forEach(o=>o.onclick=()=>{document.querySelectorAll('#postesP .opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');postePfau=o.dataset.v;});
+const DEGN={TU:'Très urgent',EVT:'Événement',U:'Urgent',MURG:'Moins urgent'};
+const DEGC={TU:'#ff2b2b',EVT:'#ff9a1f',U:'#f5c400',MURG:'#1b8fe6'};
+const DEGF={TU:'#fff',EVT:'#10213a',U:'#10213a',MURG:'#fff'};
+const DOMN={sec:'Secours (18)',orient:'Réorienter / conseil',pol:'Police (17)',intemp:'Appel intempestif'};
+const DEG_RANK={TU:0,EVT:1,U:2,MURG:3};
+const STA_PAT={TU:45,EVT:70,U:100,MURG:160};
+const PAT_LV={stag:1.5,oper:1,chef:.85};
+const LEV=[
+ {k:'b_sta',n:'Bordée miroir → STA',d:'Rappeler les opérateurs en repos pour désengorger la STA (toujours en premier)',val:0,dur:360,cd:150},
+ {k:'b_sra',n:'Bordée miroir → SRA',d:'Renforcer la réception, une fois la STA dimensionnée',val:0,dur:360,cd:150,req:'b_sta'},
+ {k:'m850',n:'Message « 850 »',d:'Message du guide de parcage invitant à ne pas appeler hors urgence (validation du colonel de garde)',val:15,dur:240,cd:150},
+ {k:'rs',n:'Réseaux sociaux (BCOM)',d:'Message à la population (validation du colonel de garde)',val:20,dur:360,cd:200},
+ {k:'tevt',n:'Transfert EVT',d:'Tous les appels de l’événement vont à la STA, sans embolie de la file TU',val:0,dur:240,cd:120},
+ {k:'gtevt',n:'Ouvrir le GT EVT',d:'Groupe de traitement dédié à l’événement (SOGCO, validation OGCO)',val:10,dur:480,cd:200},
+ {k:'gtmurg',n:'Ouvrir le GT MURG',d:'Groupe « moins urgent » en salle de renforcement (SOGCO, validation OGCO)',val:10,dur:480,cd:200}
+];
+const lvOn=k=>{const s=G&&G.pf&&G.pf.lv[k];return !!s&&s.start!=null&&G.t>=s.start&&G.t<s.end;};
+function expQual(c){
+ const s=c.sc;
+ if(s.mal)return {dom:'intemp'};
+ if(c.evtDup)return {dom:'sec',deg:'EVT'};
+ if(s.dom==='pol')return {dom:'pol'};
+ if(s.col==='violette')return {dom:'orient'};
+ let deg='U';
+ if(s.col==='rouge'||s.col==='orange')deg='TU';
+ else if(s.col==='blanche')deg=s.nat===2?'TU':'U';
+ else if(s.col==='bleue')deg='MURG';
+ return {dom:'sec',deg};
+}
+function staPatience(c){
+ const d=c.q1&&c.q1.deg||'U';
+ return STA_PAT[d]*(PAT_LV[G.lvl]||1)*(lvOn('b_sta')?1.6:1)*(c.evtDup&&lvOn('tevt')?1.5:1);
+}
+/* --- démarrage --- */
+const _startGame=startGame;
+startGame=function(){
+ _startGame();
+ G.pfau=!MP.on&&postePfau==='chain';G.staQ=[];G.loadMul0=G.loadMul||1;G.patMul=1;
+ G.pf={lv:{},q:[],eid:0,nextEvt:G.t+(G.lvl==='stag'?150:G.lvl==='oper'?110:80),nextMurg:G.t+(G.lvl==='stag'?9999:G.lvl==='oper'?280:200),stats:{evt:0,murg:0}};
+ if(G.pfau){log('🏢 PFAU 17-18-112 : vous tenez la réception (NIV 1) puis le traitement (NIV 2). Priorité de traitement : TU, EVT, U, MURG.');}
+ pfauUi();
+};
+/* --- décroché : NIV 0 puis NIV 1 --- */
+const _answer=answer;
+answer=function(c){
+ const was=c.st;_answer(c);
+ if(!G||!G.pfau||was!=='ring'||c.st!=='act'||c.q1done)return;
+ c.n1=true;c.n1T=G.t;c.n1sel={};
+ if(c.evt){if(!c.evt.first){c.evt.first=c;c.evtFirst=true;}else c.evtDup=true;}
+ msg('s','NIV 0 : le disque sonore a déjà prévenu l’appelant qu’il allait être mis en relation avec les secours.');
+ msg('s','NIV 1 · SRA : accueillez, localisez, qualifiez (domaine + degré d’urgence) en moins de 30 s, puis transférez.');
+ n1Refresh();
+};
+/* --- panneau NIV 1 / NIV 2 --- */
+function n1Init(){
+ $('#n1dom').innerHTML='<button data-d="sec">🚒 Secours (18)</button><button data-d="orient">ℹ Réorienter / conseil</button><button data-d="pol">🚓 Police (17)</button><button data-d="intemp">🚫 Intempestif</button>';
+ $('#n1deg').innerHTML=['TU','EVT','U','MURG'].map(d=>'<button data-g="'+d+'" title="'+DEGN[d]+'" style="background:'+DEGC[d]+';color:'+DEGF[d]+';font-weight:800">'+d+'</button>').join('');
+}
+n1Init();
+function n1Paint(){
+ const c=G&&G.active,s=(c&&c.n1sel)||{};
+ document.querySelectorAll('#n1dom button').forEach(b=>b.classList.toggle('on',b.dataset.d===s.dom));
+ document.querySelectorAll('#n1deg button').forEach(b=>{b.style.outline=b.dataset.g===s.deg?'3px solid #fff':'none';});
+ $('#n1deg').classList.toggle('hidden',s.dom!=='sec');
+ const go=$('#n1go');
+ if(!s.dom){go.textContent='Choisissez une qualification';go.disabled=true;}
+ else if(s.dom==='sec'){go.disabled=!s.deg;go.textContent=s.deg?'↪ Transférer au NIV 2 (STA) en '+s.deg:'Choisissez le degré d’urgence';}
+ else{go.disabled=false;go.textContent={orient:'ℹ Conseiller puis raccrocher',pol:'↪ Transférer à la police (17)',intemp:'🚫 Clore : appel intempestif'}[s.dom];}
+}
+$('#n1dom').onclick=e=>{const b=e.target.closest('button');const c=G&&G.active;if(!b||!c||c.q1done)return;c.n1sel=c.n1sel||{};c.n1sel.dom=b.dataset.d;if(b.dataset.d!=='sec')c.n1sel.deg=null;n1Paint();};
+$('#n1deg').onclick=e=>{const b=e.target.closest('button');const c=G&&G.active;if(!b||!c||c.q1done)return;c.n1sel=c.n1sel||{};c.n1sel.deg=b.dataset.g;n1Paint();};
+$('#n1go').onclick=()=>n1Go();
+function n1Refresh(){
+ const p=$('#n1');if(!p)return;const c=G&&G.active;
+ if(!G||!G.pfau||!c||c.ended||!c.n1){p.classList.add('hidden');return;}
+ p.classList.remove('hidden');
+ if(c.q1done){
+  $('#n1a').classList.add('hidden');$('#n1b').classList.remove('hidden');
+  const q=c.q1;let h='<b>🧭 NIV 2 · STA</b> — qualification reçue : <span class="tag" style="background:'+DEGC[q.deg]+';color:'+DEGF[q.deg]+'">'+q.deg+'</span> · attente '+Math.round(c.staWait||0)+' s<div style="font-size:12px;color:var(--mut)">Instruisez : localisez, choisissez les moyens, déclenchez les départs, donnez les conseils.</div>';
+  if(c.evtDup&&c.evt&&c.evt.first&&c.evt.first!==c)h+='<div style="margin-top:6px;font-size:12px"><b>⚠ Événement déjà connu</b> (ligne '+c.evt.first.n+') : recueillez les nouveaux éléments puis rattachez l’appel, sans engager de moyens en double.</div><button id="n1att" class="teal" style="width:100%;margin-top:4px">🔗 Rattacher à l’intervention en cours</button>';
+  $('#n1b').innerHTML=h;
+  const bt=$('#n1att');if(bt)bt.onclick=()=>n1Attach(c);
+ }else{
+  $('#n1a').classList.remove('hidden');$('#n1b').classList.add('hidden');
+  const ex=expQual(c);
+  $('#n1hint').textContent=LVL[G.lvl].hint?('💡 '+(ex.dom==='sec'?'Secours, degré '+ex.deg+' ('+DEGN[ex.deg]+')':ex.dom==='orient'?'Cela ne relève pas des secours : réorientez et conseillez':'Cet appel semble intempestif')):'';
+  n1Paint();
+ }
+}
+function orientPhrase(c){
+ const id=c.sc.id||'';
+ if(/fuite|inond/.test(id))return 'Ce n’est pas une urgence pour les pompiers : coupez l’arrivée d’eau si vous le pouvez et appelez un plombier ou votre assurance.';
+ if(/chat|chien|animal|guepe|nid/.test(id))return 'Pour un animal, contactez la mairie ou un service spécialisé ; nous n’intervenons que s’il y a un danger pour une personne.';
+ if(/porte/.test(id))return 'Pour une porte claquée, appelez un serrurier ; nous n’intervenons qu’en cas de danger.';
+ return 'Cela ne relève pas des sapeurs-pompiers : contactez la mairie ou un professionnel. Si la situation s’aggrave, rappelez le 18.';
+}
+function n1Go(){
+ const c=G&&G.active;if(!c||c.ended||c.q1done)return;const s=c.n1sel||{};
+ if(!s.dom)return;
+ if(s.dom==='sec'&&!s.deg)return toast('Choisissez le degré d’urgence : TU, EVT, U ou MURG.');
+ if(G.tuto&&!(s.dom==='sec'&&s.deg==='TU'))return toast("Tutoriel : une personne qui ne respire plus est une détresse vitale → Secours (18) puis TU.");
+ const t=G.t-c.n1T;
+ c.q1={dom:s.dom,deg:s.deg||null,t,exp:expQual(c)};c.q1done=true;
+ if(s.dom==='sec'){
+  msg('o','Je vous mets en relation avec un opérateur secours, ne raccrochez pas.');
+  if(!c.sc.mal)msg('c',pick(["D'accord, dépêchez-vous s'il vous plaît !","Oui, je reste en ligne.","Ok, merci, vite !"]));
+  msg('s','↪ Transfert au NIV 2 (STA) en priorité '+s.deg+'.');
+  saveUi(c);c.sta=true;c.staAt=G.t;c.staWait=0;G.staQ.push(c);G.active=null;stopSpeak();
+  log('↪ Ligne '+c.n+' transférée au NIV 2 : <b>'+s.deg+'</b> ('+Math.round(t)+' s de qualification).');
+  uiCall();
+ }else if(s.dom==='orient'){
+  const o=orientPhrase(c);msg('o',o);if(!c.sc.mal){const r=pick(["D'accord, merci, au revoir.","Ah d'accord, je vais voir ça, merci.","Très bien, merci beaucoup."]);msg('c',r);say(r,c);}
+  c.n1End='orient';endCall(c,'orient');
+ }else if(s.dom==='pol'){
+  msg('o','Je vous transfère immédiatement à la police, restez en ligne.');msg('s','↪ Appel transféré à la salle de réception police (17).');
+  c.n1End='pol';endCall(c,'transfer');
+ }else{
+  c.n1End='intemp';flagMal();
+ }
+}
+function n1Attach(c){
+ if(!c||c.ended||!c.evtDup)return;
+ msg('o','Merci pour ces précisions, les secours sont déjà en route à cette adresse. Mettez-vous en sécurité et ne raccrochez qu’après mes consignes.');
+ if(!c.sc.mal){const r=pick(["D'accord, merci, ils arrivent !","Oui, je les vois arriver, merci !"]);msg('c',r);say(r,c);}
+ c.attached=true;endCall(c,'attach');
+}
+/* --- prise d’un appel dans la file du NIV 2 --- */
+function staTake(c){
+ if(!c||c.ended||!G.staQ.includes(c))return;
+ if(G.active&&!holdCall())return;
+ G.staQ=G.staQ.filter(x=>x!==c);c.sta=false;c.staTaken=true;c.staWait=G.t-c.staAt;G.active=c;c.silence=0;
+ loadUi(c);
+ msg('s','↪ Transfert reçu au NIV 2 (STA) : '+c.q1.deg+' · attente '+Math.round(c.staWait)+' s.');
+ msg('o','Opérateur secours, je prends votre appel.');
+ if(!c.sc.mal){const t=pick(["Oui, c'est urgent, écoutez-moi !","Enfin ! Je vous écoute.","Allô ? Oui, je suis là !"]);msg('c',t);c.lastC=t;say(t,c);}
+ uiCall();
+}
+const _endCall=endCall;
+endCall=function(c,why){
+ if(G&&G.staQ)G.staQ=G.staQ.filter(x=>x!==c);
+ c.sta=false;_endCall(c,why);
+};
+const _uiCall=uiCall;
+uiCall=function(){_uiCall();try{n1Refresh();}catch(e){console.warn(e);}};
+/* --- notation PFAU --- */
+function pfauRes(total,notes){return {total:clamp(Math.round(total),0,100),loc:0,mo:0,q:0,rap:0,notes};}
+function pfauEnd(c){
+ const q=c.q1,e=q.exp.dom,k=c.n1End,notes=[];let t;
+ if(k===e){t=88;notes.push('NIV 1 : appel correctement traité à la réception ('+DOMN[k]+')');}
+ else if(e==='sec'){t=10;notes.push('Appel de secours écarté au NIV 1 ('+DOMN[k]+') : les secours auraient dû être engagés');}
+ else{t=40;notes.push('NIV 1 : orientation « '+DOMN[k]+' » (attendue : '+DOMN[e]+')');}
+ if(q.t>30){t-=3;notes.push('Qualification en '+Math.round(q.t)+' s (objectif < 30 s)');}
+ return pfauRes(t,notes);
+}
+function pfauAdjust(c,r){
+ if(!c.q1)return r;
+ const notes=r.notes,q=c.q1,e=q.exp;let t=r.total;
+ if(q.dom!==e.dom){t-=10;notes.push('NIV 1 : appel orienté « '+DOMN[q.dom]+' » (attendu : '+DOMN[e.dom]+')');}
+ else if(q.dom==='sec'&&q.deg!==e.deg){t-=Math.abs(DEG_RANK[q.deg]-DEG_RANK[e.deg])>1?8:5;notes.push('NIV 1 : qualification '+q.deg+' (attendue : '+e.deg+')');}
+ else t+=3;
+ if(q.t>30){t-=3;notes.push('NIV 1 : qualification en '+Math.round(q.t)+' s (objectif < 30 s)');}
+ if(c.staTaken&&c.staWait>STA_PAT[q.deg]*.6){t-=4;notes.push('Attente de '+Math.round(c.staWait)+' s au NIV 2 pour un appel '+q.deg);}
+ if(c.lost&&c.sta!==undefined&&!c.staTaken&&c.staAt!=null){notes.push('Appel perdu pendant l’attente au NIV 2');}
+ r.total=clamp(Math.round(t),0,100);return r;
+}
+const _evaluate=evaluate;
+evaluate=function(c){
+ if(c.q1&&c.n1End&&!(c.n1End==='intemp'&&c.sc.mal))return pfauEnd(c);
+ if(c.q1&&(c.autoGT||c.attached)){
+  const r=pfauRes(c.attached?82:78,[c.attached?'Appel rattaché à l’événement connu, sans moyens en double':'Appel traité par le groupe de traitement']);
+  return pfauAdjust(c,r);
+ }
+ const r=_evaluate(c);
+ if(c.evtDup&&!c.attached&&c.units&&c.units.length){r.total=clamp(r.total-20,0,100);r.notes.push('Événement déjà connu : moyens engagés en double (rattachez l’appel à l’intervention en cours)');}
+ return pfauAdjust(c,r);
+};
+/* --- événements, vagues « moins urgent », file du NIV 2 --- */
+function mkEvDesc(sc,ad){return {pers:pickPers(),sc:SC.indexOf(sc),ad:Math.max(0,ADDR.indexOf(ad)),adr:ad,name:pick(NAMES),jit:rnd(-10,10),gap:30,id:++G.planned};}
+function spawnEvent(){
+ const pf=G.pf,lv=G.lvl,n=lv==='stag'?3:lv==='oper'?4+Math.floor(rnd(0,2)):5+Math.floor(rnd(0,3));
+ const sc=SC.find(x=>x.id===pick(['feu','acc','veh','gaz']))||SC.find(x=>x.id==='feu');if(!sc)return;
+ const ad=sc.addr||genAddr(sc),ev={id:++pf.eid,sc,ad,n,first:null,title:sc.title||sc.id};
+ for(let i=0;i<n;i++)pf.q.push({at:G.t+i*rnd(6,14),ev});
+ pf.stats.evt++;
+ pf.nextEvt=G.t+(lv==='stag'?rnd(260,380):lv==='oper'?rnd(180,290):rnd(120,210))+n*12;
+}
+function spawnMurg(){
+ const pf=G.pf,lv=G.lvl,n=lv==='chef'?7:5,ids=['arbre','inond','branche','fuite_eau'].map(i=>SC.find(x=>x.id===i)).filter(Boolean);
+ if(!ids.length)return;
+ for(let i=0;i<n;i++){const sc=pick(ids);pf.q.push({at:G.t+i*rnd(7,13),sc,ad:sc.addr||genAddr(sc),wave:1});}
+ pf.stats.murg++;pf.nextMurg=G.t+rnd(320,480);
+ log('⛈ Épisode météo sur la zone : afflux d’appels « moins urgents » attendu.');
+}
+function pfauTick(){
+ if(!G||!(G.pfau||G.chef)||!G.pf)return;const pf=G.pf;
+ LEV.forEach(d=>{const s=pf.lv[d.k];if(s&&s.start!=null){
+  if(!s.on&&G.t>=s.start&&G.t<s.end){s.on=1;log('✅ '+d.n+' : en vigueur.');radio('🎛 <b>'+d.n+'</b> en vigueur',true);}
+  if(s.on&&G.t>=s.end){s.on=0;log('⏹ '+d.n+' : terminé.');}
+ }});
+ G.patMul=lvOn('b_sra')?1.4:1;
+ G.loadMul=(G.loadMul0||1)*(lvOn('m850')?1.35:1)*(lvOn('rs')?1.2:1);
+ if(!G.over&&G.pfau){
+  if(G.t>=pf.nextEvt&&G.t<G.dur-90)spawnEvent();
+  if(G.t>=pf.nextMurg&&G.t<G.dur-90)spawnMurg();
+  pf.q=pf.q.filter(it=>{
+   if(G.t<it.at)return true;
+   const d=mkEvDesc(it.ev?it.ev.sc:it.sc,it.ev?it.ev.ad:it.ad);createCall(d);
+   const c=G.calls[G.calls.length-1];if(c){if(it.ev)c.evt=it.ev;if(it.wave)c.wave=1;}
+   return false;
+  });
+ }
+ G.staQ.slice().forEach(c=>{
+  c.staWait=G.t-c.staAt;
+  if(!c.sc.mal)c.stress=Math.min(100,c.stress+.25*.5);
+  if(c.q1.deg==='EVT'&&c.evtDup&&lvOn('gtevt')||c.q1.deg==='MURG'&&lvOn('gtmurg')){
+   c.gtAt=c.gtAt||G.t+rnd(10,20);
+   if(G.t>=c.gtAt){c.autoGT=true;log('👥 '+(c.q1.deg==='EVT'?'GT EVT':'GT MURG')+' : ligne '+c.n+' traitée par le groupe de traitement.');endCall(c,'gt');return;}
+  }
+  const lim=staPatience(c);
+  if(!c.w1&&c.staWait>lim*.6){c.w1=1;log('⚠ Appel '+c.q1.deg+' (ligne '+c.n+') en attente depuis '+Math.round(c.staWait)+' s au NIV 2.');if(soundOn)beep(520,.12,.07);}
+  if(c.staWait>lim){c.lost=true;endCall(c,'lost');}
+ });
+ if(G.over)G.staQ.slice().forEach(c=>{c.lost=true;endCall(c,'lost');});
+}
+setInterval(pfauTick,500);
+/* --- baromètre PFAU, file NIV 2, leviers --- */
+function leverFire(k){
+ const d=LEV.find(x=>x.k===k);if(!d||!G||!(G.pfau||G.chef))return;const pf=G.pf,st=pf.lv[k]||(pf.lv[k]={});
+ if(st.end!=null&&G.t<st.end+d.cd)return toast('Levier indisponible pour le moment.');
+ if(d.req&&!lvOn(d.req))return toast('Respectez l’ordre du BSP 115.1 : renforcez d’abord la STA, puis la SRA.');
+ st.start=G.t+d.val;st.end=st.start+d.dur;st.on=0;
+ log('🎛 '+d.n+(d.val?' : validation en cours ('+d.val+' s).':' : activé.'));toast('🎛 '+d.n+(d.val?' : validation en cours…':' : activé.'));
+ pfauUi();
+}
+$('#levList').onclick=e=>{const b=e.target.closest('[data-lv]');if(b)leverFire(b.dataset.lv);};
+function pfauUi(){
+ const bar=$('#baro'),lv=$('#levBox');
+ if(!G||!G.pfau){bar.classList.add('hidden');lv.classList.add('hidden');return;}
+ bar.classList.remove('hidden');lv.classList.remove('hidden');
+ const ln=$('#lines'),q=G.staQ.slice().sort((a,b)=>DEG_RANK[a.q1.deg]-DEG_RANK[b.q1.deg]||a.staAt-b.staAt);
+ if(q.length){
+  if(!G.calls.length&&!G.held.length)ln.innerHTML='';
+  q.forEach(c=>{const d=document.createElement('div');d.className='line';d.style.borderColor=DEGC[c.q1.deg];
+   d.innerHTML='<span>↪ NIV 2 · Ligne '+c.n+' <span class="tag" style="background:'+DEGC[c.q1.deg]+';color:'+DEGF[c.q1.deg]+'">'+c.q1.deg+'</span> <small style="color:var(--mut)">('+Math.round(c.staWait||0)+' s / '+Math.round(staPatience(c))+')</small></span>';
+   const b=document.createElement('button');b.textContent=G.active?'⏸ + Prendre':'Prendre';b.className='primary';b.onclick=()=>staTake(c);d.appendChild(b);ln.appendChild(d);});
+ }
+ const old=G.calls.reduce((m,c)=>Math.max(m,c.wait),0),cnt={TU:0,EVT:0,U:0,MURG:0};let oldSta=0;
+ G.staQ.forEach(c=>{cnt[c.q1.deg]++;oldSta=Math.max(oldSta,c.staWait||0);});
+ const col=v=>v>.66?'#ff4252':v>.33?'#f5a623':'#2ecc71';
+ let h='<b>📊 Baromètre PFAU</b>';
+ h+='<div>SRA (NIV 1) : <b>'+G.calls.length+'</b> en attente · plus ancien <b style="color:'+col(old/120)+'">'+Math.round(old)+' s</b> / 120 s</div>';
+ h+='<div>STA (NIV 2) : '+['TU','EVT','U','MURG'].map(d=>'<span class="tag" style="background:'+DEGC[d]+';color:'+DEGF[d]+'">'+d+' '+cnt[d]+'</span>').join(' ')+' · plus ancien <b>'+Math.round(oldSta)+' s</b></div>';
+ h+='<div>Votre poste : <b>'+(G.active?(G.active.q1done?'NIV 2 en ligne':'NIV 1 en ligne'):'libre')+'</b></div>';
+ const grp={};G.calls.concat(G.staQ,G.active?[G.active]:[]).forEach(c=>{if(c.evt&&!c.ended){(grp[c.evt.id]||(grp[c.evt.id]={ev:c.evt,n:0})).n++;}});
+ Object.values(grp).filter(g=>g.n>=2).forEach(g=>{h+='<div style="color:#ff9a1f;font-weight:700">⚠ '+g.n+' appels décrivent la même situation ('+esc(g.ev.title)+', '+esc(g.ev.ad.street)+') : événement probable → qualifiez EVT, activez Transfert EVT / GT EVT.</div>';});
+ const w=G.calls.concat(G.staQ).filter(c=>c.wave&&!c.ended).length;
+ if(w>=3)h+='<div style="color:#1b8fe6;font-weight:700">⛈ '+w+' appels « moins urgents » en attente : envisagez le GT MURG et le message 850.</div>';
+ if(old>60||cnt.TU+cnt.EVT+cnt.U>=3)h+='<div style="color:#ff4252;font-weight:700">⚠ Flux d’appels élevé : bordée miroir (STA d’abord), message 850.</div>';
+ bar.innerHTML=h;
+ $('#levList').innerHTML=LEV.map(d=>{
+  const s=G.pf.lv[d.k];let st='Prêt',cls='';
+  if(s&&s.start!=null){
+   if(G.t<s.start){st='Validation '+Math.ceil(s.start-G.t)+' s';cls='wait';}
+   else if(G.t<s.end){st='Actif '+Math.ceil(s.end-G.t)+' s';cls='on';}
+   else if(G.t<s.end+d.cd){st='Délai '+Math.ceil(s.end+d.cd-G.t)+' s';cls='cd';}
+  }
+  const dis=cls==='wait'||cls==='on'||cls==='cd'||(d.req&&!lvOn(d.req)&&cls==='');
+  return '<button data-lv="'+d.k+'" title="'+esc(d.d)+'" '+(dis?'class="'+cls+'" ':'')+'style="display:flex;justify-content:space-between;width:100%;margin-top:3px;text-align:left'+(cls==='on'?';outline:2px solid #2ecc71':'')+(dis?';opacity:.65':'')+'"><span>'+esc(d.n)+'</span><small>'+st+'</small></button>';
+ }).join('');
+ const t=G.active&&G.active.n1&&!G.active.q1done?G.t-G.active.n1T:null;
+ if(t!=null){const e=$('#n1t');e.textContent=t<=30?Math.ceil(30-t)+' s':'+'+Math.round(t-30)+' s';e.style.color=t<=30?'var(--ok)':'#ff4252';}
+}
+const _slowUi=slowUi;
+slowUi=function(){_slowUi();try{pfauUi();}catch(e){console.warn(e);}};
+
+/* ===== tutoriel guidé : un vrai appel pas à pas, de la réception (NIV 1) à l’engagement (NIV 2) ===== */
+const TUTO=[
+ {t:'Bienvenue à la PFAU',x:'Vous êtes à la plateforme des appels d’urgence 17-18-112 du centre opérationnel de Champerret. Ce tutoriel vous fait traiter un vrai appel, pas à pas. Rien n’est noté tant que vous apprenez.',next:1},
+ {t:'Les 4 niveaux',x:'NIV 0 : un disque sonore prévient l’appelant. NIV 1 (SRA) : vous décrochez, accueillez et orientez en moins de 30 s. NIV 2 (STA) : vous instruisez la demande et engagez les secours. NIV 3 : le sous-officier de garde dirige la salle (leviers, voir plus loin).',next:1},
+ {t:'Une ligne sonne',x:'Une ligne entrante apparaît à gauche. Cliquez sur « Décrocher ».',hi:'#lines',done:()=>tA()},
+ {t:'Accueillir l’appelant',x:'L’appelant attend que vous parliez. Cliquez sur « Sapeurs-pompiers, j’écoute » (ou dites-le au micro : maintenez la touche V).',hi:'#greet',done:()=>tA()&&tA().opened},
+ {t:'NIV 1 · Écouter et qualifier',x:'Écoutez ce qu’il dit : une personne ne respire plus, c’est une détresse vitale. Dans le panneau bleu, choisissez « Secours (18) » puis le degré « TU » (très urgent), puis transférez. Règle : « Je suis sous la menace » ou détresse vitale = TU ; « Je vois le sinistre » = EVT.',hi:'#n1',done:()=>(tA()&&tA().q1done)||(G.staQ&&G.staQ.length>0)},
+ {t:'NIV 2 · La file prioritaire',x:'L’appel attend maintenant au NIV 2, classé par priorité : TU, puis EVT, U, MURG. Cliquez sur « Prendre » pour l’instruire. Plus un TU attend, plus l’appelant perd patience.',hi:'#lines',done:()=>tA()&&tA().q1done},
+ {t:'Interroger',x:'Posez les questions essentielles avec les boutons (ou au micro / au clavier) : où ? que se passe-t-il ? est-il conscient ? respire-t-il ? Vous pouvez aussi écrire une question libre : l’appelant répond.',hi:'#qb',done:()=>{const a=tA();return a&&['where','what','conscious','breathing'].every(k=>a.asked.has(k));}},
+ {t:'La fiche d’intervention',x:'Dès que l’appelant donne l’adresse, la fiche se remplit. Vérifiez la commune et la voie ; corrigez-les si besoin.',hi:'.fiche',done:()=>$('#fCom').value.trim()&&$('#fStr').value.trim()},
+ {t:'La couleur d’intervention',x:'Cliquez sur « ROUGE » : urgence vitale, moyen médicalisé au départ. (Blanche = courant, orange = conférence à 3 avec le médecin, verte = bascule au 15, bleue = non urgent, violette = hors mission.)',hi:'#colRow',done:()=>tA()&&tA().col==='rouge'},
+ {t:'Engager les moyens',x:'Cliquez sur un centre de secours proche sur la carte (le menu s’ouvre sur la carte), ajoutez 1 VSAV et 1 EP, puis « Envoyer depuis ce centre ». Vous pouvez aussi demander le SMUR avec « 15 · SAMU ». Les engins partent avec gyrophares.',hi:'#center',done:()=>tA()&&tA().units.length>0},
+ {t:'Conseils à l’appelant',x:'Les secours roulent : accompagnez l’appelant. Donnez un conseil adapté (appeler un témoin, commencer le massage cardiaque guidé, aller chercher un défibrillateur…) avec les boutons de conseil.',hi:'#qb',done:()=>tA()&&tA().adv.size>0},
+ {t:'Les outils de la salle',x:'Baromètre PFAU : files d’attente et alertes. Leviers (en haut à gauche, repliés) : bordée miroir (STA d’abord), message 850, réseaux sociaux, Transfert EVT, GT EVT, GT MURG. « En attente » met un appel de côté pour en prendre un autre (3 maximum). Les engins peuvent être rappelés avant l’arrivée, et vous choisissez l’hôpital de destination.',next:1},
+ {t:'À vous de jouer',x:'Suivez l’intervention sur la carte : à l’arrivée des secours, l’appelant vous le dit et un bilan s’affiche. Cliquez sur « Continuer la garde » pour enchaîner de vrais appels, ou « Quitter » pour revenir à l’accueil.',final:1}
+];
+const tA=()=>G&&G.active&&!G.active.ended?G.active:null;
+let tuto={on:false,i:0,hi:null};
+function tutoHi(sel){
+ if(tuto.hi){document.querySelectorAll('.tutoHi').forEach(e=>e.classList.remove('tutoHi'));tuto.hi=null;}
+ if(!sel)return;const e=document.querySelector(sel);if(e){e.classList.add('tutoHi');tuto.hi=sel;}
+}
+function tutoShow(){
+ const s=TUTO[tuto.i],p=$('#tuto');if(!s){p.classList.add('hidden');tutoHi(null);return;}
+ $('#tuT').textContent=s.t;$('#tuN').textContent=(tuto.i+1)+' / '+TUTO.length;$('#tuX').textContent=s.x;
+ $('#tuNext').textContent=s.final?'Continuer la garde':s.next?'Suivant ›':'Passer cette étape ›';
+ p.classList.remove('hidden');tutoHi(s.hi);
+}
+function tutoGo(n){
+ tuto.i=n;if(n>=TUTO.length){tutoEnd();return;}
+ tutoShow();
+ if(TUTO[n].hi==='#lines'&&n===5){/* rien */}
+}
+function tutoEnd(){
+ tuto.on=false;$('#tuto').classList.add('hidden');tutoHi(null);
+ if(G){G.tuto=false;G.next=8;if(G.pf){G.pf.nextEvt=G.t+120;G.pf.nextMurg=G.t+400;}}
+ try{localStorage.setItem('bspp18tuto','1');}catch(e){}
+ toast('Tutoriel terminé : la garde continue.');
+}
+function startTuto(){
+ try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();audio.resume();}catch(e){}
+ postePfau='chain';lvl='stag';dur=0;
+ startGame();piperPreload();
+ G.tuto=true;G.next=1e9;if(G.pf){G.pf.nextEvt=1e9;G.pf.nextMurg=1e9;}
+ tuto={on:true,i:0,hi:null};tutoShow();
+ setTimeout(()=>{
+  if(!G||!G.tuto)return;
+  const sc=SC.find(x=>x.id==='acr_rue')||SC.find(x=>x.col==='rouge');
+  createCall({pers:'calme',sc:SC.indexOf(sc),ad:0,adr:sc.addr||genAddr(sc),name:'Mme Lambert',jit:0,gap:999,id:++G.planned});
+ },1200);
+}
+$('#bTuto').onclick=startTuto;
+$('#tuNext').onclick=()=>{if(!tuto.on)return;const s=TUTO[tuto.i];if(s.final){tutoEnd();return;}tutoGo(tuto.i+1);};
+$('#tuQuit').onclick=()=>{try{localStorage.setItem('bspp18tuto','1');}catch(e){}location.reload();};
+setInterval(()=>{
+ if(!tuto.on||!G)return;const s=TUTO[tuto.i];
+ if(s&&s.done){let ok=false;try{ok=!!s.done();}catch(e){}if(ok)tutoGo(tuto.i+1);}
+ if(s&&s.hi&&!document.querySelector('.tutoHi')&&tuto.i===TUTO.indexOf(s))tutoHi(s.hi);
+},400);
+try{if(!localStorage.getItem('bspp18tuto'))$('#bTuto').classList.add('primary');}catch(e){}
+
+/* ===== multijoueur par postes : chef de salle (hôte) + 17 / 18 / 112 / 15 =====
+   Chaque appel est composé sur un numéro (18, 112, 17 ou 15) ; seul le poste concerné le voit sonner (débordement vers le 112 puis tous).
+   Les postes se transfèrent les appels (avec l'historique de l'échange). Le chef de salle voit tout, dispose du baromètre et des leviers. */
+POSTES.splice(0,POSTES.length,['chef','👑 Chef de salle'],['18','🚒 18 · Pompiers'],['112','☎ 112 · Urgences'],['17','🚓 17 · Police'],['15','🚑 15 · SAMU']);
+const ROLE_NUM=['18','112','17','15'];
+const ROLE_ICO={chef:'👑','18':'🚒','112':'☎','17':'🚓','15':'🚑'};
+/* --- scénarios de police (poste 17) --- */
+[
+['p_cambr',"Cambriolage en cours",'tech','violette',6,'','p',"Allô ? Il y a quelqu'un qui est en train de forcer la porte de l'appartement d'en face !","Un homme casse la serrure du voisin avec une pince, il a un sac à dos.","Un homme seul, habillé en noir, la trentaine.","Le voisin est parti en week-end.",'',{d:"Il n'a pas l'air armé mais il est très nerveux."}],
+['p_rixe',"Bagarre devant un bar",'tech','violette',6,'','po',"Il y a une grosse bagarre devant le bar, ils se tapent dessus à plusieurs !","Cinq ou six hommes se battent sur le trottoir, il y a des bouteilles cassées.","Des hommes de 20 à 30 ans, apparemment ivres.","Une dispute à la sortie du bar.",'',{d:"Oui, des bouteilles volent, ne venez pas sans la police !"}],
+['p_tapage',"Tapage nocturne",'tech','violette',6,'','p',"Bonjour, mes voisins font une fête monstre, ça fait trois heures que la musique est à fond.","La musique est à fond et ça crie dans tout l'immeuble.","Les voisins du dessus, des jeunes.","Une fête d'anniversaire qui dure.",'',{d:"Pas de danger, mais on ne peut pas dormir."}],
+['p_vol',"Vol à l'arraché",'tech','violette',6,'','po',"On vient de m'arracher mon sac ! Le voleur s'enfuit en scooter !","Un homme sur un scooter m'a arraché mon sac et file vers le boulevard.","Un homme casqué, blouson noir, scooter blanc.","Il m'a fait tomber en passant.",'',{d:"Je suis tombée, j'ai mal au genou mais ça va."}],
+['p_conj',"Cris et violences chez les voisins",'tech','violette',6,'','p',"J'entends des hurlements chez mes voisins, un homme crie et une femme pleure, on dirait qu'il la frappe !","Des cris, des coups et des objets qui cassent à travers la cloison.","Un couple, je crois, avec un enfant.","Ça arrive souvent mais là c'est plus fort.",'',{d:"Je ne sais pas s'il a une arme, mais ça cogne fort."}],
+['p_arme',"Individu avec un couteau",'tech','violette',6,'','po',"Il y a un homme qui menace les passants avec un couteau devant la gare !","Un homme agite un grand couteau et crie, les gens s'enfuient.","Un homme d'une quarantaine d'années, très agité.","Il semble avoir perdu la tête.",'',{d:"Oui, il est armé, c'est très dangereux !"}],
+['p_vehvol',"Voiture volée",'tech','violette',6,'','po',"On vient de me voler ma voiture, elle était garée juste devant chez moi ce matin !","Ma voiture a disparu, il reste des morceaux de verre par terre.","Une voiture grise, immatriculée en 75.","Ils ont dû forcer la porte.",'',{d:"Pas de danger, je veux juste déclarer le vol."}],
+['p_rode',"Rôdeur dans l'immeuble",'tech','violette',6,'','p',"Il y a un inconnu qui traîne dans les étages de l'immeuble, il essaie les poignées des portes.","Un homme essaie toutes les portes du palier.","Un homme que je n'ai jamais vu, capuche sur la tête.","Il est entré derrière un livreur.",'',{d:"Je me suis enfermé chez moi, j'ai peur."}]
+].forEach(r=>{mkSc(r);const s=SC[SC.length-1];s.dom='pol';s.noEngage=true;});
+const POL_N={p_arme:2,p_rixe:2,p_conj:2,p_cambr:1,p_vol:1,p_vehvol:1,p_tapage:1,p_rode:1};
+/* --- numéro composé et poste concerné --- */
+function dialFor(sc){
+ const r=srng();
+ if(sc.dom==='pol')return r<.7?'17':'112';
+ if(sc.col==='verte')return r<.5?'15':r<.8?'18':'112';
+ if(sc.nat===1&&r>.97)return '15';
+ return r<.66?'18':'112';
+}
+function roleOf(n){return (MP.postes||{})[n]||'18';}
+function rolesPresent(){const s=new Set();(MP.players||[]).forEach(p=>s.add(roleOf(p)));return s;}
+function callHandler(c){const d=c.dial||'18',rp=rolesPresent();if(rp.has(d))return d;if(rp.has('112'))return '112';return 'chef';}
+const _inSectorSolo=inSector;
+inSector=function(c){
+ if(!MP.on||MP.mode!=='coop')return _inSectorSolo(c);
+ const r=MP.myPoste;
+ if(r==='chef'||r==='all')return true;
+ if(callHandler(c)===r)return true;
+ if(r==='112'&&c.wait>20)return true;
+ return c.wait>40;
+};
+function expRole(sc){if(sc.mal)return null;if(sc.dom==='pol')return '17';if(sc.col==='verte')return '15';return '18';}
+/* --- descripteur et appel : numéro composé --- */
+const _createCall=createCall;
+createCall=function(d){_createCall(d);const c=G.calls[G.calls.length-1];if(c&&c.d===d)c.dial=d.dial||'18';};
+/* --- salon : chef de salle (hôte) / choix du poste --- */
+const _mpShowRoom=mpShowRoom;
+mpShowRoom=function(){
+ _mpShowRoom();
+ const sel=$('#lbPoste');
+ if(MP.mode==='coop'){
+  if(MP.host){MP.myPoste='chef';MP.postes[MP.me]='chef';sel.innerHTML='<option value="chef">👑 Chef de salle (hôte)</option>';sel.disabled=true;}
+  else{
+   sel.disabled=false;sel.innerHTML=POSTES.filter(p=>p[0]!=='chef').map(p=>'<option value="'+p[0]+'">'+p[1]+'</option>').join('');
+   if(!ROLE_NUM.includes(MP.myPoste))MP.myPoste='18';
+   sel.value=MP.myPoste;mpSend({t:'poste',who:MP.me,v:MP.myPoste});
+  }
+ }else{sel.innerHTML='<option>Postes : mode coopératif uniquement</option>';sel.disabled=true;MP.myPoste='all';}
+ mpPlayersUi();
+};
+/* --- démarrage : rôle --- */
+const _startGame2=startGame;
+startGame=function(){
+ _startGame2();
+ G.role=(MP.on&&MP.mode==='coop')?MP.myPoste:null;G.chef=G.role==='chef';
+ if(G.role&&G.role!=='all'){log('🧑‍✈️ Vous tenez le poste : <b>'+esc(posteLabel(G.role))+'</b>.');}
+ const dep=$('#engage').parentElement;if(dep)dep.id='departBox';
+ roleRefresh();
+};
+/* --- réception des appels selon le poste --- */
+const _answer2=answer;
+answer=function(c){
+ if(G&&G.role&&G.role!=='all'&&c.st==='ring'&&!inSector(c)){toast('Cet appel est destiné au poste '+posteLabel(callHandler(c))+'.');return;}
+ const was=c.st;_answer2(c);
+ if(!G||was!=='ring'||c.st!=='act'||!G.role)return;
+ c.byRole=G.role;
+ const g={'17':'🗣 « Police secours, j’écoute »','15':'🗣 « SAMU, j’écoute »','112':'🗣 « 112, j’écoute »'}[G.role];
+ if(g)$('#greet').textContent=g;else $('#greet').textContent='🗣 « Sapeurs-pompiers, j’écoute »';
+ if(c.xferChat){
+  $('#chat').innerHTML=c.xferChat;msg('s','↪ Appel transféré par '+c.xfOrig+' (poste '+c.fromRole+'). L’historique de l’échange est conservé.');
+  c.opened=true;$('#greet').classList.add('hidden');
+  if(c.xferFiche){$('#fCom').value=c.xferFiche.com||'';$('#fStr').value=c.xferFiche.str||'';}
+ }
+ roleRefresh();
+};
+/* --- transfert entre postes --- */
+function xferCall(c,to){
+ if(!c||c.ended||!G||!G.role)return;
+ if(!ROLE_NUM.includes(to)||to===G.role)return;
+ msg('o','Je vous transfère au '+to+', ne raccrochez pas.');
+ if(!c.sc.mal){const t=pick(["D'accord, merci...","Oui, mais vite s'il vous plaît !"]);msg('c',t);}
+ msg('s','↪ Appel transféré au poste '+to+'.');
+ const m={t:'xfer',id:c.id,to,by:MP.me,from:G.role,d:c.d,asked:[...c.asked],adv:[...c.adv],stress:c.stress,chat:$('#chat').innerHTML,col:c.col||'',fiche:{com:$('#fCom').value,str:$('#fStr').value}};
+ c.xfer=to;c.xferT=G.t;
+ log('↪ Ligne '+c.n+' transférée au poste '+to+'.');
+ if(MP.host){delete MP.claimed[c.id];mpSend(m);}else mpSend(m);
+ endCall(c,'xfer');
+}
+function xferIn(m){
+ if(!G||m.by===MP.me||G.over)return;
+ createCall(m.d);const c=G.calls[G.calls.length-1];if(!c)return;
+ c.dial=m.to;c.xfOrig=m.by;c.fromRole=m.from;c.asked=new Set(m.asked||[]);c.adv=new Set(m.adv||[]);c.stress=m.stress;c.xferChat=m.chat;c.xferFiche=m.fiche;
+ if(m.col)c.col=m.col;
+ log('↪ Appel transféré par '+esc(m.by)+' ('+m.from+') vers le poste '+m.to+' : ligne '+c.n+'.');
+ if(callHandler(c)===G.role||G.role==='chef'){toast('↪ Appel transféré vers le poste '+m.to);if(soundOn)beep(660,.1,.07);}
+}
+const _mpRecv=mpRecv;
+mpRecv=function(m,from){
+ if(m&&m.t==='xfer'){if(MP.host){delete MP.claimed[m.id];mpOthers(m,from);}xferIn(m);return;}
+ if(m&&m.t==='pm'){if(G)G.patMul=m.v;return;}
+ _mpRecv(m,from);
+};
+/* --- panneaux par poste --- */
+function roleRefresh(){
+ const r=G&&G.role,on=!!r&&r!=='all',a=G&&G.active&&!G.active.ended?G.active:null;
+ const set=(id,v)=>{const e=$('#'+id);if(e)e.classList.toggle('hidden',!v);};
+ set('xferBar',on&&a);set('samuP',on&&a&&r==='15');set('polP',on&&a&&r==='17');
+ set('departBox',!(on&&(r==='15'||r==='17'||r==='112')));
+ document.querySelectorAll('#xferBar [data-x]').forEach(b=>b.classList.toggle('hidden',b.dataset.x===r));
+}
+const _uiCall2=uiCall;
+uiCall=function(){_uiCall2();try{roleRefresh();}catch(e){console.warn(e);}};
+$('#xferBar').onclick=e=>{const b=e.target.closest('[data-x]');if(b&&G&&G.active)xferCall(G.active,b.dataset.x);};
+$('#polP').onclick=e=>{
+ const b=e.target.closest('[data-p]');const c=G&&G.active;if(!b||!c||c.ended)return;
+ const k=b.dataset.p;
+ if(k==='pat'||k==='ren'){
+  if(k==='ren'&&!c.polSent)return toast('Envoyez d’abord une première patrouille.');
+  if(!c.polSent){c.police=1;engage();if(!c.polSent){c.police=0;return;}c.patN=1;msg('o','Une patrouille est envoyée à votre adresse, restez en sécurité.');}
+  else{const bs=nearest(CAS,c.loc.lat,c.loc.lon)[0];ghostUnit(c,'PN',{n:'BAC',lat:bs.lat-.005,lon:bs.lon+.007});c.patN=(c.patN||1)+1;log('☎ 17 : renfort envoyé (BAC).');msg('o','Un renfort est envoyé.');}
+ }else if(k==='pomp')xferCall(c,'18');
+ else if(k==='end'){msg('o','Restez en sécurité, les policiers font le nécessaire. Au revoir.');if(!c.sc.mal){const t=pick(["Merci, au revoir.","D'accord, merci."]);msg('c',t);say(t,c);}endCall(c,'pol-end');}
+};
+$('#samuP').onclick=e=>{
+ const b=e.target.closest('[data-s]');const c=G&&G.active;if(!b||!c||c.ended)return;
+ const k=b.dataset.s;
+ if(k==='smur'){
+  if(c.dec==='smur')return;c.samu=1;engage();if(!c.samuSent){c.samu=0;return;}c.dec='smur';c.dispT=G.t;msg('o','J’envoie une équipe médicale (SMUR). Restez en ligne, je vous guide.');
+ }else if(k==='pomp'){c.dec='pomp';xferCall(c,'18');}
+ else{
+  c.dec=k;c.dispT=G.t;
+  msg('o',k==='amb'?'J’envoie une ambulance privée à votre adresse, elle arrive dans quelques minutes.':'Je vous conseille de contacter votre médecin ou SOS Médecins ; rappelez le 15 si cela s’aggrave.');
+  if(!c.sc.mal){const t=pick(["D'accord, merci beaucoup.","Très bien, merci, au revoir."]);msg('c',t);say(t,c);}
+  endCall(c,'reg');
+ }
+};
+/* --- notation par poste --- */
+function evalXfer(c){
+ const e=expRole(c.sc),t=(c.xferT||G.t)-c.pickT,notes=[];let total;
+ if(c.xfer===e){total=clamp(90-Math.max(0,t-30)*.5,60,90);notes.push('Appel correctement transféré au poste '+e+(t>30?' (un peu lent)':''));}
+ else{total=35;notes.push(e?'Transfert au poste '+c.xfer+' (attendu : '+e+')':'Appel malveillant transféré à tort (il fallait le clore)');}
+ return {total:Math.round(total),loc:0,mo:0,q:0,rap:0,notes};
+}
+function evalPol(c){
+ const s=c.sc,notes=[];let loc=0,mo=0,q=0,rap=0;
+ if(c.fiche&&c.fiche.commune===c.addr.commune)loc+=20;else notes.push(c.fiche&&c.fiche.commune?'Mauvaise commune ('+c.fiche.commune+' au lieu de '+c.addr.commune+')':'Commune non renseignée');
+ if(c.fiche&&c.fiche.street&&norm(c.fiche.street).includes(mainWord(c.addr.street)))loc+=10;else notes.push('Voie non (ou mal) renseignée');
+ const need=POL_N[s.id]||1,n=c.patN||0;
+ if(!n)notes.push('Aucune patrouille envoyée');
+ else{mo=Math.round(30*Math.min(1,n/need));if(n<need)notes.push('Renfort nécessaire ('+need+' équipages attendus)');if(n>need+1){mo-=6;notes.push('Trop d’équipages engagés');}}
+ const kf=s.key.filter(k=>c.asked.has(k)).length/s.key.length;q=Math.round(25*kf);
+ const mk=s.key.filter(k=>!c.asked.has(k));if(mk.length)notes.push('Questions oubliées : '+mk.map(k=>INT[k].b).join(', '));
+ if(n){const t=(c.dispT||G.t)-c.pickT;rap=Math.round(clamp(15*(1-(t-40)/80),0,15));if(rap<8)notes.push('Envoi tardif ('+Math.round(t)+' s)');}
+ let total=loc+mo+q+rap;if(c.lost){total=Math.round(total/2);notes.push('Appelant perdu en cours d’appel');}
+ return {total:clamp(total,0,100),loc,mo,q,rap,notes};
+}
+function evalSamu(c){
+ const s=c.sc,notes=[];
+ const exp={rouge:'smur',orange:'smur',blanche:'pomp',bleue:'amb',verte:'med'}[s.col]||'med';
+ const dec=c.xfer==='18'?'pomp':c.dec;let d=0;
+ if(dec===exp){d=50;}
+ else if(!dec){notes.push('Aucune décision de régulation prise');}
+ else if(exp==='smur'&&dec==='pomp'){d=32;notes.push('Détresse vitale : un SMUR était attendu (les pompiers seuls ne suffisent pas)');}
+ else if(exp==='smur'){d=0;notes.push('Détresse vitale sous-évaluée : décision '+dec+' (SMUR attendu)');}
+ else if(dec==='smur'){d=20;notes.push('SMUR engagé à tort pour une situation moins grave');}
+ else{d=25;notes.push('Décision « '+dec+' » (attendue : '+exp+')');}
+ const kf=s.key.filter(k=>c.asked.has(k)).length/s.key.length,q=Math.round(25*kf);
+ const mk=s.key.filter(k=>!c.asked.has(k));if(mk.length)notes.push('Questions oubliées : '+mk.map(k=>INT[k].b).join(', '));
+ const t=(c.dispT||c.endT||G.t)-c.pickT,rap=Math.round(clamp(15*(1-(t-45)/90),0,15));if(rap<8)notes.push('Régulation tardive ('+Math.round(t)+' s)');
+ const adv=c.adv.size?10:0;if(!adv&&exp==='smur')notes.push('Aucun conseil donné en attendant le SMUR');
+ let total=d+q+rap+adv;if(c.lost){total=Math.round(total/2);notes.push('Appelant perdu en cours d’appel');}
+ return {total:clamp(total,0,100),loc:0,mo:d,q,rap,notes};
+}
+const _evaluate2=evaluate;
+evaluate=function(c){
+ if(c.byRole==='15'&&(c.sc.nat===1||c.sc.col==='verte')&&!c.sc.mal)return evalSamu(c);
+ if(c.byRole==='17'&&c.sc.dom==='pol')return evalPol(c);
+ if(c.xfer)return evalXfer(c);
+ return _evaluate2(c);
+};
+/* --- chef de salle : baromètre de la salle, leviers --- */
+function roleUi(){
+ if(!G)return;
+ document.querySelectorAll('#lines .line.ring').forEach((row,i)=>{const c=G.calls[i];if(c&&!row.querySelector('.dialtag')){const s=row.querySelector('span');if(s)s.insertAdjacentHTML('beforeend',' <span class="tag dialtag" style="background:#ffd400;color:#10213a">☎ '+(c.dial||'18')+'</span>');}});
+ if(!G.chef)return;
+ $('#baro').classList.remove('hidden');$('#levBox').classList.remove('hidden');
+ const by={'18':0,'112':0,'17':0,'15':0};G.calls.forEach(c=>{by[c.dial||'18']=(by[c.dial||'18']||0)+1;});
+ const old=G.calls.reduce((m,c)=>Math.max(m,c.wait),0),rp=rolesPresent();
+ let h='<b>📊 Baromètre de la salle</b><div>Appels en attente : <b>'+G.calls.length+'</b> · plus ancien <b style="color:'+(old>40?'#ff4252':old>20?'#f5a623':'#2ecc71')+'">'+Math.round(old)+' s</b></div>';
+ h+='<div>Par numéro : '+ROLE_NUM.map(n=>'<span class="tag" style="background:#ffd400;color:#10213a">'+n+' · '+by[n]+'</span>').join(' ')+'</div>';
+ h+='<div>Postes : '+(MP.players||[]).map(p=>esc(p)+' ('+esc(roleOf(p))+')').join(', ')+'</div>';
+ ROLE_NUM.forEach(n=>{if(!rp.has(n))h+='<div style="color:#ff9a1f;font-weight:700">⚠ Aucun opérateur au '+n+' : ses appels débordent sur le '+(rp.has('112')&&n!=='112'?'112':'chef de salle')+'.</div>';});
+ $('#baro').innerHTML=h;
+ $('#levList').innerHTML=LEV.filter(d=>['b_sta','b_sra','m850','rs'].includes(d.k)).map(d=>{
+  const s=G.pf.lv[d.k];let st='Prêt',cls='';
+  if(s&&s.start!=null){
+   if(G.t<s.start){st='Validation '+Math.ceil(s.start-G.t)+' s';cls='wait';}
+   else if(G.t<s.end){st='Actif '+Math.ceil(s.end-G.t)+' s';cls='on';}
+   else if(G.t<s.end+d.cd){st='Délai '+Math.ceil(s.end+d.cd-G.t)+' s';cls='cd';}
+  }
+  const dis=cls==='wait'||cls==='on'||cls==='cd'||(d.req&&!lvOn(d.req)&&cls==='');
+  return '<button data-lv="'+d.k+'" title="'+esc(d.d)+'" style="display:flex;justify-content:space-between;width:100%;margin-top:3px;text-align:left'+(cls==='on'?';outline:2px solid #2ecc71':'')+(dis?';opacity:.65':'')+'"><span>'+esc(d.n)+'</span><small>'+st+'</small></button>';
+ }).join('');
+ if(MP.host&&G.patMul!==G.lastPm){G.lastPm=G.patMul;mpSend({t:'pm',v:G.patMul});}
+}
+const _slowUi2=slowUi;
+slowUi=function(){_slowUi2();try{roleUi();}catch(e){console.warn(e);}};
+
 /* ===== logo + écran de chargement ===== */
 const LOGO=$('#ldLogo').src;
 document.querySelectorAll('.lgimg').forEach(i=>{i.src=LOGO;});
@@ -2226,7 +2827,7 @@ try{const ic=document.createElement('link');ic.rel='icon';ic.href=LOGO;document.
 setInterval(tick,100);setInterval(slowUi,1000);
 </script>
 <script>
-window.APP_VERSION="1.0.3";
+window.APP_VERSION="1.1.3";
 (function(){
  var tag=document.querySelector('#start .card .sub:last-of-type');
  var v=document.createElement('div');v.style.cssText='margin-top:8px;font-size:11px;color:var(--mut)';v.textContent='Version '+window.APP_VERSION;
